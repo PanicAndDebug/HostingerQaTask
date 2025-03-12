@@ -9,7 +9,7 @@ Cypress.Commands.add('navigateTo', (page: string) => {
 });
 
 Cypress.Commands.add('verifyPageContains', (selector: string, text: string) => {
-  cy.get(selector).should('be.visible').and('contain', text);
+  cy.get(selector).should('be.visible').and('contain', text, { timeout: 1000 });
 });
 
 Cypress.Commands.add(
