@@ -7,7 +7,8 @@
     "cypress:run": "cypress run",
     "lint": "eslint --fix --ext .ts \"cypress/**/**/*.ts\"",
     "format": "prettier --write \"cypress/**/**/*.ts\"",
-    "commit": "npm run format && npm run lint && git add . && read -p 'Enter commit message: ' commitMessage && git commit -m \"$commitMessage\" && git push origin $(git rev-parse --abbrev-ref HEAD)"
+    "commit": "npm run format && npm run lint && git add . && read -p 'Enter commit message: ' commitMessage && git commit -m \"$commitMessage\" && git push origin $(git rev-parse --abbrev-ref HEAD)",
+    "push": "git push origin $(git rev-parse --abbrev-ref HEAD)"
   },
   "keywords": [],
   "author": "",
