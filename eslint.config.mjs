@@ -10,4 +10,9 @@ export default [
   pluginJs.configs.recommended,
   ...tseslint.configs.recommended,
   pluginCypress.configs.recommended,
+  {
+    rules: {
+      "cypress/unsafe-to-chain-command": "off",
+    },
+  },
 ];

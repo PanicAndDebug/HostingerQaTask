@@ -1,8 +1,6 @@
 describe('Muffin shop navigation', () => {
   beforeEach(() => {
-    cy.visit(
-      'https://lightgrey-antelope-m7vwozwl8xf7l3y2.builder-preview.com/',
-    );
+    cy.visit(Cypress.env('baseUrl'));
   });
 
   it('Should load the homepage with correct title', () => {
@@ -16,19 +14,23 @@ describe('Muffin shop navigation', () => {
       .should('be.visible');
   });
 
-  it('Should navigate and verify pages', () => {
+  it('Should navigate to shop and verify product list', () => {
     cy.navigateTo('shop');
     cy.verifyPageContains(
       '[data-qa="product-list-section-item-title"]',
       'Blueberry Burst Muffins',
     );
+  });
 
+  it('Should navigate to menu and verify muffin delights', () => {
     cy.navigateTo('menu');
     cy.verifyPageContains(
       '[data-qa="gridtextbox:z5f2az"] span',
       'Muffin Delights',
     );
+  });
 
+  it('Should navigate to about page and verify welcome message', () => {
     cy.navigateTo('about');
     cy.verifyPageContains(
       '[data-qa="gridtextbox:z51glb"]',

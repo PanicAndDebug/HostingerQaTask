@@ -1,104 +1,132 @@
+const product: string = 'Choco-Caramel Drizzle Cupcakes';
 const cakeCount: number = 55;
 const goodEmail: string = 'test@test.com';
+const badEmails: string[] = ['test', '@test.com'];
 const fullName: string = 'Testas Testauskas';
-const phoneNumber: number = 99999999;
+const phoneNumbers = {
+  valid: 99999999,
+  short: 9,
+  long: 154154165165,
+};
 const comment: string = `Can you make it w/o chocolate and caramel? I'm allergic. Oh, and can you make it gluten free??`;
-let cakePrice: number;
-let shipPrice1: number;
-let shipPrice2: number;
+
+const selectors = {
+  productPrice: '[data-qa="shoppingcart-text-price"]',
+  checkoutBtn: '[data-qa="shoppingcart-btn-checkout"]',
+  shippingPrice: '[data-qa="checkout-cartsummary-shippingprice"]',
+  shippingMethod: '[data-qa="checkout-cartsummary-shippingprice-name"]',
+  totalPrice: '[data-qa="checkout-cartsummary-totalprice-value"]',
+  continueToContact: '[data-qa="checkout-shippingdetails-continue"]',
+  emailInput: '[placeholder="Email"]',
+  emailError: '#email-messages',
+  phoneInput: '[placeholder="Your phone number"]',
+  phoneError: '[data-qa="checkout-contactinformation-phone"]',
+  requiredFieldErrors: {
+    email: '#email-messages',
+    name: '#name-messages',
+    phone: '[data-qa="checkout-contactinformation-phone"]',
+    comment: '#customFieldValue-messages',
+  },
+};
+
+// Function to go through checkout process
+const goToCheckout = (productName: string, quantity: number): void => {
+  cy.addProductToCart(productName, quantity);
+
+  cy.capturePrice(selectors.productPrice).then((cakePrice: number) => {
+    cy.get(selectors.checkoutBtn).click();
+    cy.ensureShippingToLithuania();
+
+    cy.capturePrice(selectors.shippingPrice).then((shipPrice1: number) => {
+      cy.selectShippingMethod();
+
+      cy.get(selectors.shippingMethod)
+        .should('be.visible')
+        .should('contain', 'LP Express');
+
+      cy.capturePrice(selectors.shippingPrice).then((shipPrice2: number) => {
+        expect(shipPrice2).not.to.eq(shipPrice1);
+        // Not adding separate price checking tests, as the price tends to spike before settling to the correct value.
+        // The implicit checks during the flow are sufficient to validate that the price is correct.
+        cy.get(selectors.totalPrice)
+          .should('be.visible')
+          .invoke('text')
+          .should((totalText: string) => {
+            const cartTotal: number = parseFloat(
+              totalText.replace(/[^\d.]/g, ''),
+            );
+            const expectedTotal: number = cakePrice * quantity + shipPrice2;
+            expect(cartTotal).to.equal(expectedTotal);
+          });
+      });
+    });
+  });
+
+  cy.get(selectors.continueToContact).click();
+};
+
 describe('Muffin purchase flow', () => {
   beforeEach(() => {
-    cy.visit(
-      'https://lightgrey-antelope-m7vwozwl8xf7l3y2.builder-preview.com/',
+    cy.log('Base URL:', Cypress.env('baseUrl')); // Debugging
+    cy.visit(Cypress.env('baseUrl'));
+  });
+
+  it('Should complete checkout successfully', () => {
+    goToCheckout(product, cakeCount);
+    cy.fillContactInfo(goodEmail, fullName, phoneNumbers.valid, comment);
+    cy.get('[data-qa="checkout-contactinformation-continue"]').click();
+    cy.get('[data-qa="checkout-paymentmethods-placeorder"]').click();
+    cy.verifyPageContains('.payment-info__title', 'Thank you for your order');
+    cy.get('.payment-info__button').click();
+    cy.verifyPageContains('[data-qa="builder-product-section-title"]', product);
+  });
+
+  it('Should validate email format', () => {
+    goToCheckout(product, cakeCount);
+    //the errors appear when you start writing in the next input field after the one of concern,
+    //so I'm just reusing cy.fillContactInfo. If run time was a major concern partial filling should be implemented
+    cy.fillContactInfo(badEmails[0], fullName, phoneNumbers.valid, comment);
+    cy.get(selectors.emailError).should('contain', 'Enter a valid email');
+
+    cy.get(selectors.emailInput).first().clear().type(badEmails[1]);
+    cy.get(selectors.emailError).should('contain', 'Enter a valid email');
+  });
+
+  it('Should validate phone number format', () => {
+    goToCheckout(product, cakeCount);
+
+    cy.fillContactInfo(goodEmail, fullName, phoneNumbers.short, comment);
+    cy.get(selectors.phoneError).should(
+      'contain',
+      'Enter a valid phone number',
+    );
+
+    cy.get(selectors.phoneInput).clear().type(phoneNumbers.long.toString());
+    cy.get(selectors.phoneError).should(
+      'contain',
+      'Enter a valid phone number',
     );
   });
 
-  it('Should buy some cupcakes', () => {
-    cy.addProductToCart('Choco-Caramel Drizzle Cupcakes', cakeCount);
+  it('Should require all necessary fields before proceeding', () => {
+    goToCheckout(product, cakeCount);
+    cy.get('[data-qa="checkout-contactinformation-continue"]').click();
 
-    // Capture item price
-    cy.capturePrice('[data-qa="shoppingcart-text-price"]').then((price) => {
-      cakePrice = price;
-    });
-
-    // Checkout
-    cy.get('[data-qa="shoppingcart-btn-checkout"]').click();
-
-    // Validate destination country selection
-    cy.get('[data-qa="checkout-shippingdestination-select"]', { timeout: 5000 })
-      .should('be.visible')
-      .then((dropdown) => {
-        if (!dropdown.text().includes('Lithuania')) {
-          cy.wrap(dropdown).click(); // Open the dropdown
-
-          cy.get('.v-list-item') // Adjust this selector if needed
-            .contains('Lithuania')
-            .click(); // Select Lithuania
-
-          cy.log('🚨 Lithuania was not selected, now selecting it...');
-        } else {
-          cy.log('✅ Lithuania is already selected.');
-        }
-      });
-
-    // Capture initial shipping price
-    cy.capturePrice('[data-qa="checkout-cartsummary-shippingprice"]').then(
-      (price) => {
-        shipPrice1 = price;
-      },
+    cy.get(selectors.requiredFieldErrors.email).should(
+      'contain',
+      'Enter a valid email',
     );
-
-    // Select shipping method and verify price change
-    cy.selectShippingMethod();
-
-    cy.get('[data-qa="checkout-cartsummary-shippingprice-name"]')
-      .should('be.visible')
-      .should('contain', 'LP Express');
-    cy.capturePrice('[data-qa="checkout-cartsummary-shippingprice"]').then(
-      (price) => {
-        shipPrice2 = price;
-        expect(shipPrice2).not.to.eq(shipPrice1);
-      },
+    cy.get(selectors.requiredFieldErrors.name).should(
+      'contain',
+      'Enter a full name',
     );
-
-    // Verify total price calculation
-    cy.get('[data-qa="checkout-cartsummary-totalprice-value"]', {
-      timeout: 10000,
-    })
-      .should('be.visible')
-      .should('not.be.empty')
-      .invoke('text')
-      .then(() => {
-        cy.get('[data-qa="checkout-cartsummary-totalprice-value"]').should(
-          (total) => {
-            const cartTotal = parseFloat(total.text().replace(/[^\d.]/g, ''));
-            const expectedTotal = cakePrice * cakeCount + shipPrice2;
-
-            expect(cartTotal).to.equal(expectedTotal);
-          },
-        );
-      });
-
-    // Proceed to contact info
-    cy.get('[data-qa="checkout-shippingdetails-continue"]')
-      .should('be.visible')
-      .click();
-    cy.fillContactInfo(goodEmail, fullName, phoneNumber, comment);
-    cy.get('[data-qa="checkout-contactinformation-continue"]')
-      .should('be.visible')
-      .click();
-
-    // Place order & verify confirmation
-    cy.get('[data-qa="checkout-paymentmethods-placeorder"]')
-      .should('be.visible')
-      .click();
-    cy.verifyPageContains('.payment-info__title', 'Thank you for your order');
-    cy.get('.payment-info__button').should('be.visible').click();
-
-    // Ensure return to shop
-    cy.verifyPageContains(
-      '[data-qa="builder-product-section-title"]',
-      'Choco-Caramel Drizzle Cupcakes',
+    cy.get(selectors.requiredFieldErrors.phone).should(
+      'contain',
+      'Enter a phone number',
+    );
+    cy.get(selectors.requiredFieldErrors.comment).should(
+      'contain',
+      'Do you have any special requests or dietary restrictions we should be aware of? (e.g., gluten-free, nut allergies) is required',
     );
   });
 });

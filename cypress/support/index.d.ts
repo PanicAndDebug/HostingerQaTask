@@ -13,5 +13,6 @@ declare namespace Cypress {
       phone: number,
       comment: string,
     ): Chainable<void>;
+    ensureShippingToLithuania(): Chainable<void>;
   }
 }

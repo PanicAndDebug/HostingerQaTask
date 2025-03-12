@@ -1,13 +1,11 @@
-/* eslint-disable cypress/unsafe-to-chain-command */
-
 Cypress.Commands.add('navigateTo', (page: string) => {
   cy.get(`[data-qa="navigationblock-page-${page}"]`, { timeout: 10000 })
     .first()
     .should('be.visible')
     .click();
-  cy.get(`[data-qa="navigationblock-page-active-${page}"]`, { timeout: 10000 }).should(
-    'be.visible',
-  );
+  cy.get(`[data-qa="navigationblock-page-active-${page}"]`, {
+    timeout: 10000,
+  }).should('be.visible');
 });
 
 Cypress.Commands.add('verifyPageContains', (selector: string, text: string) => {
@@ -25,10 +23,7 @@ Cypress.Commands.add(
       .contains(productName)
       .first()
       .click();
-    cy.get('[data-qa="productpage-text-qty"]')
-      .should('be.visible')
-      .clear()
-      .type(`${quantity}`);
+    cy.get('[data-qa="productpage-text-qty"]').clear().type(`${quantity}`);
     cy.get('[data-qa="productsection-btn-addtobag"]')
       .should('be.visible')
       .click();
@@ -46,6 +41,20 @@ Cypress.Commands.add('capturePrice', (selector) => {
     });
 });
 
+Cypress.Commands.add('ensureShippingToLithuania', () => {
+  cy.get('[data-qa="checkout-shippingdestination-select"]', { timeout: 5000 })
+    .should('be.visible')
+    .then((dropdown) => {
+      if (!dropdown.text().includes('Lithuania')) {
+        cy.wrap(dropdown).click();
+        cy.get('.v-list-item').contains('Lithuania').click();
+        cy.log('🚨 Lithuania was not selected, now selecting it...');
+      } else {
+        cy.log('✅ Lithuania is already selected.');
+      }
+    });
+});
+
 Cypress.Commands.add('selectShippingMethod', () => {
   cy.get('[data-qa="checkout-shippingdetails-option-lpexpress"]')
     .should('be.visible')
@@ -56,7 +65,6 @@ Cypress.Commands.add('selectShippingMethod', () => {
   cy.get('.v-list-item')
     .contains('Express Market, K. Donelaičio g. 44a, Kaunas')
     .scrollIntoView()
-    .should('be.visible')
     .click();
 });
 
